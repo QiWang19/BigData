@@ -22,7 +22,7 @@ public class Query2 {
 				i = i + 1;
 			}
 			word.set(strs[1]);	//CustId
-			String outPut = strs[2] + " ";	// TransTotal
+			String outPut = strs[2];	// TransTotal
 			Text t = new Text();
 			t.set(outPut);
 			output.collect(word, t);
@@ -47,7 +47,7 @@ public class Query2 {
 			String l1 = Double.toString(sum);
 			String l2 = Long.toString(count);
 			Text res = new Text();
-			res.set(l2 + " " + l1);
+			res.set(l1 + " " + l2);
 			output.collect(key, res);
 		}
 		
