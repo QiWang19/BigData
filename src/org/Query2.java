@@ -1,6 +1,7 @@
 package org;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.*;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.*;
@@ -44,10 +45,13 @@ public class Query2 {
 				count = count + 1;
 			}
 			
+			DecimalFormat df = new DecimalFormat("0.00000");
+			
 			String l1 = Double.toString(sum);
 			String l2 = Long.toString(count);
+			l1 = df.format(l1);
 			Text res = new Text();
-			res.set(l1 + " " + l2);
+			res.set(l1 + "    " + l2);
 			output.collect(key, res);
 		}
 		
