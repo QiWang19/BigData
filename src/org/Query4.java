@@ -28,7 +28,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-@SuppressWarnings("deprecation")
+
 public class Query4 extends Configured implements Tool{
 
 	public static void main(String[] args) throws Exception {
@@ -52,6 +52,7 @@ public class Query4 extends Configured implements Tool{
 					while (line != null) {
 						String[] splits = line.split(",");
 						h.put(splits[0], splits[3]);
+						line = br.readLine();
 					}
 				}
 			}
@@ -75,25 +76,26 @@ public class Query4 extends Configured implements Tool{
 	}
 	
 	public static class Reduce extends  Reducer<Text, Text, Text, Text> {
-
+		double min = Double.MAX_VALUE;
+		double max = Double.MIN_VALUE;
 		@Override
 		protected void reduce(Text key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
-			// TODO Auto-generated method stub
-			//super.reduce(arg0, arg1, arg2);
+			
 			int count = 0;
-			double min = Double.MAX_VALUE;
-			double max = Double.MIN_VALUE;
+			
 			for (Text v: values) {
+				count = count + 1;
 				String line = v.toString();
 				StringTokenizer tokenizer = new StringTokenizer(line, ",");
 				String[] temp = null;
 				int i = 0;
 				while (tokenizer.hasMoreTokens()) {
 					temp[i] = tokenizer.nextToken().toString();
+					i = i + 1;
 				}
 				//count = count + Integer.parseInt(v.toString().split(",")[0]);
-				count = count + Integer.parseInt(temp[0]); 
+				//count = count + Integer.parseInt(temp[0]); 
 				double TransTotal = Double.parseDouble(temp[1]);
 				min = Math.min(min, TransTotal);
 				max = Math.max(max, TransTotal);

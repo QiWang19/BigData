@@ -116,7 +116,7 @@ public class Query4_new extends Configured implements Tool{
 		  }
 		  
 		  Text results = new Text();
-		  results.set((count+","+Float.toString(minTrans)+","+Float.toString(maxTrans)));
+		  results.set((count+"  "+Float.toString(minTrans)+"  "+Float.toString(maxTrans)));
 		  context.write(countryID,results);
 	}
 }	
