@@ -58,7 +58,7 @@ public class Query4 extends Configured implements Tool{
 			}
 		}
 		
-		public void map(LongWritable key, Text value, Context context, Reporter reporter)
+		public void map(LongWritable key, Text value, Context context)
 				throws IOException, InterruptedException {
 			String[] strs = value.toString().split(",");
 			String countryCode = h.get(strs[1]);
@@ -76,19 +76,19 @@ public class Query4 extends Configured implements Tool{
 	}
 	
 	public static class Reduce extends  Reducer<Text, Text, Text, Text> {
-		double min = Double.MAX_VALUE;
-		double max = Double.MIN_VALUE;
+		
 		@Override
 		protected void reduce(Text key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
 			
 			int count = 0;
-			
+			double min = Double.MAX_VALUE;
+			double max = Double.MIN_VALUE;
 			for (Text v: values) {
 				count = count + 1;
 				String line = v.toString();
 				StringTokenizer tokenizer = new StringTokenizer(line, ",");
-				String[] temp = null;
+				String[] temp = new String[2];
 				int i = 0;
 				while (tokenizer.hasMoreTokens()) {
 					temp[i] = tokenizer.nextToken().toString();
@@ -125,7 +125,7 @@ public class Query4 extends Configured implements Tool{
 		job.setMapOutputKeyClass(Text.class);
 		job.setMapOutputValueClass(Text.class);
 		
-		DistributedCache.addCacheFile(new URI("/usr/share/hadoop/customers"), conf);
+		DistributedCache.addCacheFile(new URI("/user/hadoop/customers"), conf);
 		FileInputFormat.setInputPaths(job, new Path(arg0[0]));
 		FileOutputFormat.setOutputPath(job, new Path(arg0[1]));
 		
