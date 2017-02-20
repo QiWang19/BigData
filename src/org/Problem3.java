@@ -80,13 +80,15 @@ public class Problem3 extends Configured implements Tool {
 					index = i;
 				}
 			}
+			if (String.valueOf(x) + "," + String.valueOf(y) != null) {
+				Text k = new Text();
+				Text v= new Text();
+				k.set(l.get(index).get(0).toString() + "," + l.get(index).get(1).toString());
+				//k.set(String.valueOf(index));
+				v.set(String.valueOf(x) + "," + String.valueOf(y));
+				context.write(k, v);
+			}
 			
-			Text k = new Text();
-			Text v= new Text();
-			k.set(l.get(index).get(0).toString() + "," + l.get(index).get(1).toString());
-			//k.set(String.valueOf(index));
-			v.set(String.valueOf(x) + "," + String.valueOf(y));
-			context.write(k, v);
 			
 		}
 		
@@ -223,7 +225,7 @@ public class Problem3 extends Configured implements Tool {
 		//String currentCentroidPath = centroidPath;
 		
 		do {
-			int returnCode = ToolRunner.run(new Problem3(), args);
+			int returnCode = ToolRunner.run(new Configuration(), new Problem3(), args);
 			Configuration conf = new Configuration();
 			FileSystem hdfs = FileSystem.get(conf);
 			
@@ -247,7 +249,7 @@ public class Problem3 extends Configured implements Tool {
 			}
 			
 			//TODO new meanXY to home/....
-			hdfs.copyToLocalFile(new Path("/usr/hadoop/output10/part-r-00000"), new Path("/home/hadoop/mean.csv"));
+			hdfs.copyToLocalFile(new Path("/usr/hadoop/output10/part-r-00000"), new Path("/home/hadoop/mean"));
 			
 			//TODO delete cache path file
 			hdfs.delete(new Path("/usr/hadoop/seed.csv"), true);
@@ -258,6 +260,30 @@ public class Problem3 extends Configured implements Tool {
 			
 			//conf.set("centroid.path", currentCentroidPath);
 		} while (iteration < 5 && flag == false);
+		
+		Job job = new Job();
+		Configuration conf = job.getConfiguration();
+		DistributedCache.addCacheFile(new Path("/usr/hadoop/seed").toUri(), conf);
+		
+	    job.setJobName("p3");
+	    job.setJarByClass(Problem3.class);
+		     
+	    job.setMapOutputKeyClass(Text.class);
+	    job.setMapOutputValueClass(Text.class);
+	     
+	    job.setOutputKeyClass(Text.class);
+	    job.setOutputValueClass(Text.class);
+	
+	    job.setMapperClass(Map.class);
+	    job.setNumReduceTasks(5);
+	     
+//        job.setInputFormatClass(TextInputFormat.class);   
+//        job.setOutputFormatClass(TextOutputFormat.class);
+	
+	    FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+               
+	    job.waitForCompletion(true);
 		
 	}
 
