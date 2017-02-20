@@ -250,9 +250,9 @@ public class Problem3 extends Configured implements Tool {
 			hdfs.copyToLocalFile(new Path("/usr/hadoop/output10/part-r-00000"), new Path("/home/hadoop/mean.csv"));
 			
 			//TODO delete cache path file
-			hdfs.delete(new Path("/usr/hadoop/seed"), true);
+			hdfs.delete(new Path("/usr/hadoop/seed.csv"), true);
 			//TODO home...in 226 to cache path
-			hdfs.moveFromLocalFile(new Path("/home/hadoop/mean.csv"), new Path("/usr/hadoop/seed"));
+			hdfs.moveFromLocalFile(new Path("/home/hadoop/mean.csv"), new Path("/usr/hadoop/seed.csv"));
 			
 			hdfs.delete(new Path(args[1]), true);
 			
