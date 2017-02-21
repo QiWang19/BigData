@@ -56,10 +56,8 @@ public class Query3 extends Configured implements Tool {
                 String point = fields[1];
                 String[] str = point.split(",");
                 List<Double> l = new ArrayList<Double>();  
-                //for (int i = 0; i < parts.length; ++i){  
-                    l.add(Double.parseDouble(str[0]));
-                    l.add(Double.parseDouble(str[1]));
-                //}  
+				l.add(Double.parseDouble(str[0]));
+				l.add(Double.parseDouble(str[1]));
                 res.add((ArrayList<Double>) l);  
             }  
             fsIn.close();  
@@ -69,27 +67,27 @@ public class Query3 extends Configured implements Tool {
         return res;  
     } 
     
-    public static double calDist(String oldseed, String newseed)  
-    throws IOException{  
-        List<ArrayList<Double>> oldcenters = getCentroid(oldseed);  
-        List<ArrayList<Double>> newcenters = getCentroid(newseed);  
-        double distance = 0;
-        int k = oldcenters.size();
-        for (int i = 0; i < k; i++){  
-            for (int j = 0; j < oldcenters.get(i).size(); j++){  
-                double tmp = Math.abs(oldcenters.get(i).get(j) - newcenters.get(i).get(j));  
-                distance += Math.pow(tmp, 2);  
-            }  
-        }  
-        System.out.println("Distance = " + distance );  
-        return distance;  
+    public static boolean unchange (String oldseed, String newseed) {
+    	boolean res = true;
+    	List<ArrayList<Double>> oldSeeds = getCentroid(oldseed);  
+        List<ArrayList<Double>> newSeeds = getCentroid(newseed);
+        for ( int i = 0; i < oldSeeds.size(); i++) {
+        	double oldX = oldSeeds.get(i).get(0);
+        	double oldY = oldSeeds.get(i).get(1);
+        	double newX = newSeeds.get(i).get(0);
+        	double newY = newSeeds.get(i).get(1);
+        	double distance = Math.sqrt(Math.pow(newX - oldX, 2) + Math.pow(newY - oldY, 2));
+        	if (distance < 0.000001 && distance > -0.000001) {
+        		continue;
+        	} else {
+        		res = false; //change
+        	}
+        }
+    	
+    	return res;
     }
 	
-//    public static int calSize(String inputpath) {
-//        List<ArrayList<Double>> oldcenters = getCentroid(inputpath);  
-//        int k = oldcenters.size();
-//        return k;
-//    }
+
     
 	public static int randomInt(int min, int max){
         Random random = new Random();
@@ -98,25 +96,15 @@ public class Query3 extends Configured implements Tool {
 	}
 	
 	public static void seedFile(int k) {
-//		int X;
-//		int Y;
 		int min = 0; 
 		int max = 10000;
 		int count = k;
-//		StringBuffer str = new StringBuffer();
-		File csv = new File("/home/hadoop/Desktop/CS561_Project3/kMeans_seed.txt");
+		File csv = new File("/home/hadoop/Desktop/Project3/kMeans_seed.txt");
 		
-		//FileWriter fw;
 		try {
-			//fw = new FileWriter("/home/hadoop/Desktop/CS561_Project3/kMeans_seed.txt");
 			BufferedWriter bw = new BufferedWriter(new FileWriter(csv, true));
 			
 			for(int i = 0; i < count; i++){
-				//set cluster number
-//				str.append(Integer.toString(i+1));
-//				str.append('\t');
-				//set x
-				//X = ramdomInt(1, 10000);
 				int x = randomInt(min, max);
 				int y = randomInt(min, max);
 				bw.write(String.valueOf(i + 1));
@@ -124,20 +112,10 @@ public class Query3 extends Configured implements Tool {
 				bw.write(String.valueOf(x));
 				bw.write(",");
 				bw.write(String.valueOf(y));
-//				str.append(Integer.toString(X));
-//				str.append(',');
-				//set y
-				//Y = ramdomInt(1, 10000);
-//				str.append(Integer.toString(Y));
-//				
-//				bw.write(str.toString());
 				bw.newLine();
-//				str.setLength(0);
 			}
-//			bw.write("Tag"+"\t"+"Yes");
 			bw.flush();
 			bw.close();
-			//fw.close();
 			System.out.println("Done!");
 
 		} catch (IOException e) {
@@ -182,8 +160,6 @@ public class Query3 extends Configured implements Tool {
 			for(String k: h.keySet()) {
 				String seed_str = h.get(k);
 				String[] seed_parts = seed_str.split(",");
-//				double seed_X = Double.parseDouble(seed_parts[0]);
-//				double seed_Y = Double.parseDouble(seed_parts[1]);
 				double seedX = Double.parseDouble(seed_parts[0]);
 				double seedY = Double.parseDouble(seed_parts[1]);
 				double d = Math.sqrt(Math.pow((x-seedX), 2)+Math.pow((y-seedY), 2));
@@ -192,72 +168,17 @@ public class Query3 extends Configured implements Tool {
 					min = d;
 				}
 			}
-			
-			outputKey.set(index);
-			//outputValue.set(line+","+Integer.toString(1));
-			outputValue.set(line);
+			String str[] = h.get(index).split(",");
+			outputKey.set(str[0] +"," + str[1]);
+			outputValue.set(line+","+Integer.toString(1));
 			context.write(outputKey, outputValue);
 			
 		}
 	}
 	
 	
-	public static class MapForCluster extends Mapper<LongWritable, Text, Text, Text>{
-		
-		private HashMap<String,String> seeds = new HashMap<String,String>();
-		private Text outputKey = new Text();
-		private Text outputValue = new Text();
-		
-		protected void setup(Context context) throws IOException {
-			Path[] cachePaths = DistributedCache.getLocalCacheFiles(context.getConfiguration());
-			for(Path p:cachePaths){
-				if(p.toString().endsWith("kMeans_seed.txt")){
-					BufferedReader br = new BufferedReader(new FileReader(p.toString()));
-					String line=null;
-					while((line=br.readLine()) != null){
-						String[] parts = line.split("\t");
-						seeds.put(parts[0], parts[1]);
-					}
-				}
-			}	
-		}
-		
-		public void map(LongWritable key, Text value,Context context) 
-				throws IOException, InterruptedException{
-			
-			String cl = "";
-			double dist = Double.MAX_VALUE;
-			
-			String line = value.toString();
-			String[] parts = line.split(",");
-			int X = Integer.parseInt(parts[0]);
-			int Y = Integer.parseInt(parts[1]);
-			
-			for(String k: seeds.keySet()) {
-				String seed_str = seeds.get(k);
-				String[] seed_parts = seed_str.split(",");
-				double seed_X = Double.parseDouble(seed_parts[0]);
-				double seed_Y = Double.parseDouble(seed_parts[1]);
-				double pointToSeed = Math.sqrt(Math.pow((X-seed_X), 2)+Math.pow((Y-seed_Y), 2));
-				if (pointToSeed<dist) {
-					cl = k;
-					dist = pointToSeed;
-				}
-			}
-			
-			outputKey.set(cl);
-			outputValue.set(line);
-			context.write(outputKey, outputValue);
-			
-		}
-	}
-
-
-	
-
 	public static class Combine extends Reducer<Text, Text, Text, Text>{	
 
-		//private String line = "";
 		private Text k = new Text();
 		private Text v = new Text();
 		
@@ -291,7 +212,6 @@ public class Query3 extends Configured implements Tool {
 	
 	public static class Reduce extends Reducer<Text, Text, Text, Text>{	
 
-		//private String line = "";
 		private Text k = new Text();
 		private Text v = new Text();
 		
@@ -303,9 +223,6 @@ public class Query3 extends Configured implements Tool {
 			double totalCount = 0;
 			double meanX = 0;
 			double meanY = 0;
-//			long sumX = 0;
-//			long sumY = 0;
-//			long count = 0;
 			Iterator<Text> value = values.iterator();
 			
 			while (value.hasNext()) {
@@ -314,19 +231,27 @@ public class Query3 extends Configured implements Tool {
 				double sumX = Double.parseDouble(str[0]);
 				double sumY = Double.parseDouble(str[1]);
 				double count = Double.parseDouble(str[2]);
-//				sumXFinal += sumX;
 				totalX = totalX + sumX;
 				totalY = totalY + sumY;
 				totalCount = totalCount + count;
-//				sumYFinal += sumY;
-//				countFinal += count;
 			}
 			
 			meanX = (double)totalX/(double)totalCount;
 			meanY = (double)totalY/(double)totalCount;
 
+			String[] oldSeed = key.toString().trim().split(",");
+			double x = Double.parseDouble(oldSeed[0]);
+			double y = Double.parseDouble(oldSeed[1]);
+			double distance = Math.sqrt(Math.pow(meanX - x, 2) + Math.pow(meanY - y, 2));
+			String c = "change";
+			if (distance < 0.000001 && distance > -0.000001) {
+				c = "unchange";
+			} else {
+				c = "change";
+			}
+			
 			k.set(key);
-			v.set(Double.toString(meanX)+","+Double.toString(meanY) + "\t" + "Change");
+			v.set(Double.toString(meanX)+","+Double.toString(meanY) + "\t" + c);
 			context.write(k, v);
 			
 		}
@@ -352,7 +277,6 @@ public class Query3 extends Configured implements Tool {
 	    job.setMapperClass(Map.class);
 	    job.setCombinerClass(Combine.class);
 	    job.setReducerClass(Reduce.class);
-//	    job.setNumReduceTasks(20);
 	     
         job.setInputFormatClass(TextInputFormat.class);   
         job.setOutputFormatClass(TextOutputFormat.class);
@@ -376,11 +300,9 @@ public class Query3 extends Configured implements Tool {
 		seedFile(k); // Generate local file kMeans_seed.txt
 		Configuration cf = new Configuration();
 		FileSystem fs = FileSystem.get(cf);
-		fs.moveFromLocalFile(new Path("/home/hadoop/Desktop/CS561_Project3/kMeans_seed.txt"), 
+		fs.moveFromLocalFile(new Path("/home/hadoop/Desktop/Project3/kMeans_seed.txt"), 
 								new Path("/user/hadoop/Project3/kMeans_seed.txt"));  // put local file to HDFS
-		
-//		int returnCode = ToolRunner.run(new Q3(), args);
-		
+		boolean flag = false;
 		do {
 			int returnCode = ToolRunner.run(new Query3(), args);
 
@@ -389,79 +311,27 @@ public class Query3 extends Configured implements Tool {
 			
 			Path oldseed = new Path("/user/hadoop/Project3/kMeans_seed.txt");
 			Path newseed = new Path("/user/hadoop/Project3/output_problem3/part-r-00000");
-//			int sizeOld = calSize(oldseed.toString());
-//			int sizeNew = calSize(newseed.toString());
-//			if (sizeOld==sizeNew) {
-				dist = calDist(oldseed.toString(), newseed.toString());
-//			}else{
-//				tag = false;
-//			}
+			
+			flag = unchange(oldseed.toString(), newseed.toString());
 
 			hdfs.copyToLocalFile(new Path("/user/hadoop/Project3/output_problem3/part-r-00000"), 
-									new Path("/home/hadoop/Desktop/CS561_Project3/Q3out.txt"));
+									new Path("/home/hadoop/Desktop/Project3/Q3out.txt"));
+			hdfs.copyToLocalFile(new Path("/user/hadoop/Project3/output_problem3/part-r-00000"), 
+									new Path("/home/hadoop/Desktop/Project3/Q3out" + Integer.toString(iteration) + ".txt"));
 			hdfs.delete(new Path("/user/hadoop/Project3/kMeans_seed.txt"),true);
-			hdfs.moveFromLocalFile(new Path("/home/hadoop/Desktop/CS561_Project3/Q3out.txt"),
+			hdfs.moveFromLocalFile(new Path("/home/hadoop/Desktop/Project3/Q3out.txt"),
 									new Path("/user/hadoop/Project3/kMeans_seed.txt"));
 			hdfs.delete(new Path(args[1]), true);
 			
-			// Delete local file "~/Q3out/part-r-00000"
-			File index = new File("/home/hadoop/Desktop/CS561_Project3/Q3out.txt");
+		        //Delete local file "~/Q3out/part-r-00000"
+			File index = new File("/home/hadoop/Desktop/Project3/Q3out.txt");
 			index.delete();
 
 			iteration = iteration + 1;
 			System.out.println("Repeated:" + iteration);
-			
-		} while (iteration < 5 && dist>threshold ); // dist > Threshold
+			System.out.println(flag);
+		} while (iteration < 5 && flag == false ); // dist > Threshold
 		
-
-		// Clusetering based on the newest seeds
-		Job job = new Job();
-		Configuration conf = job.getConfiguration();
-		DistributedCache.addCacheFile(new Path("/user/hadoop/Project3/kMeans_seed.txt").toUri(), conf);
-		
-	    job.setJobName("Q3cluster");
-	    job.setJarByClass(Query3.class);
-		     
-	    job.setMapOutputKeyClass(Text.class);
-	    job.setMapOutputValueClass(Text.class);
-	     
-	    job.setOutputKeyClass(Text.class);
-	    job.setOutputValueClass(Text.class);
-	
-	    job.setMapperClass(MapForCluster.class);
-	    job.setNumReduceTasks(5);
-	     
-        job.setInputFormatClass(TextInputFormat.class);   
-        job.setOutputFormatClass(TextOutputFormat.class);
-	
-	    FileInputFormat.addInputPath(job, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
-               
-	    job.waitForCompletion(true);
-		
-		
-		FileWriter fw;
-		try {
-			fw = new FileWriter("/home/hadoop/Desktop/CS561_Project3/Change.txt");
-			BufferedWriter bw = new BufferedWriter(fw,1);
-			StringBuffer str = new StringBuffer();
-
-			if (dist > threshold) {
-				str.append("Changed" + "\t" + "Yes");
-			} else {
-				str.append("Changed" + "\t" + "No");
-			}
-			bw.write(str.toString());
-			bw.flush();
-			bw.close();
-			fw.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		fs.moveFromLocalFile(new Path("/home/hadoop/Desktop/CS561_Project3/Change.txt"), 
-								new Path("/user/hadoop/Project3/output_problem3"));
 		
 	}
 	
