@@ -99,7 +99,7 @@ public class Query3 extends Configured implements Tool {
 		int min = 0; 
 		int max = 10000;
 		int count = k;
-		File csv = new File("/home/hadoop/Desktop/Project3/kMeans_seed.txt");
+		File csv = new File("/home/hadoop/Desktop/Project3/seed.csv");
 		
 		try {
 			BufferedWriter bw = new BufferedWriter(new FileWriter(csv, true));
@@ -119,7 +119,6 @@ public class Query3 extends Configured implements Tool {
 			System.out.println("Done!");
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -128,13 +127,13 @@ public class Query3 extends Configured implements Tool {
 	public static class Map extends Mapper<LongWritable, Text, Text, Text>{
 		
 		private HashMap<String,String> h = new HashMap<String,String>();
-		private Text outputKey = new Text();
-		private Text outputValue = new Text();
+		private Text k = new Text();
+		private Text v = new Text();
 		
 		protected void setup(Context context) throws IOException {
 			Path[] paths = DistributedCache.getLocalCacheFiles(context.getConfiguration());
 			for(Path path:paths){
-				if(path.toString().endsWith("kMeans_seed.txt")){
+				if(path.toString().endsWith("seed.csv")){
 					BufferedReader br = new BufferedReader(new FileReader(path.toString()));
 					String line=br.readLine();
 					while(line != null) {
@@ -151,27 +150,27 @@ public class Query3 extends Configured implements Tool {
 			
 			String index = "-1" ;
 			double min = Double.MAX_VALUE;
-			
+						
 			String line = value.toString();
 			String[] parts = line.split(",");
-			int x = Integer.parseInt(parts[0]);
-			int y = Integer.parseInt(parts[1]);
+			int x = Integer.parseInt(parts[1]);
+			int y = Integer.parseInt(parts[2]);
 			
-			for(String k: h.keySet()) {
-				String seed_str = h.get(k);
+			for(String str: h.keySet()) {
+				String seed_str = h.get(str);
 				String[] seed_parts = seed_str.split(",");
 				double seedX = Double.parseDouble(seed_parts[0]);
 				double seedY = Double.parseDouble(seed_parts[1]);
 				double d = Math.sqrt(Math.pow((x-seedX), 2)+Math.pow((y-seedY), 2));
 				if (d < min) {
-					index = k;
+					index = str;
 					min = d;
 				}
 			}
 			String str[] = h.get(index).split(",");
-			outputKey.set(str[0] +"," + str[1]);
-			outputValue.set(line+","+Integer.toString(1));
-			context.write(outputKey, outputValue);
+			k.set(str[0] +"," + str[1]);
+			v.set(parts[1] + "," + parts[2] +","+ Integer.toString(1));
+			context.write(k, v);
 			
 		}
 	}
@@ -262,10 +261,10 @@ public class Query3 extends Configured implements Tool {
 		
 		Job job = new Job();
 		Configuration conf = job.getConfiguration();
-		DistributedCache.addCacheFile(new Path("/user/hadoop/Project3/kMeans_seed.txt").toUri(), conf);
-		conf.set("mapreduce.output.textoutputformat.separator", ",");
+		DistributedCache.addCacheFile(new Path("/user/hadoop/Project3/seed.csv").toUri(), conf);
 		
-	    job.setJobName("Q3");
+		
+	    job.setJobName("Query3");
 	    job.setJarByClass(Query3.class);
 		     
 	    job.setMapOutputKeyClass(Text.class);
@@ -292,16 +291,15 @@ public class Query3 extends Configured implements Tool {
 	public static void main(String[] args) throws Exception {
 		
 		int iteration = 0;
-		double dist = Double.MAX_VALUE;
-		boolean tag = true;
+		
 		
 		int k = Integer.parseInt(args[2]);
-		double threshold = Double.parseDouble(args[3]);
-		seedFile(k); // Generate local file kMeans_seed.txt
+		
+		seedFile(k); 
 		Configuration cf = new Configuration();
 		FileSystem fs = FileSystem.get(cf);
-		fs.moveFromLocalFile(new Path("/home/hadoop/Desktop/Project3/kMeans_seed.txt"), 
-								new Path("/user/hadoop/Project3/kMeans_seed.txt"));  // put local file to HDFS
+		fs.moveFromLocalFile(new Path("/home/hadoop/Desktop/Project3/seed.csv"), 
+								new Path("/user/hadoop/Project3/seed.csv"));  
 		boolean flag = false;
 		do {
 			int returnCode = ToolRunner.run(new Query3(), args);
@@ -309,28 +307,28 @@ public class Query3 extends Configured implements Tool {
 			Configuration conf = new Configuration();
 			FileSystem hdfs = FileSystem.get(conf);
 			
-			Path oldseed = new Path("/user/hadoop/Project3/kMeans_seed.txt");
+			Path oldseed = new Path("/user/hadoop/Project3/seed.csv");
 			Path newseed = new Path("/user/hadoop/Project3/output_problem3/part-r-00000");
 			
 			flag = unchange(oldseed.toString(), newseed.toString());
 
 			hdfs.copyToLocalFile(new Path("/user/hadoop/Project3/output_problem3/part-r-00000"), 
-									new Path("/home/hadoop/Desktop/Project3/Q3out.txt"));
+									new Path("/home/hadoop/Desktop/Project3/outseed.csv"));
 			hdfs.copyToLocalFile(new Path("/user/hadoop/Project3/output_problem3/part-r-00000"), 
-									new Path("/home/hadoop/Desktop/Project3/Q3out" + Integer.toString(iteration) + ".txt"));
-			hdfs.delete(new Path("/user/hadoop/Project3/kMeans_seed.txt"),true);
-			hdfs.moveFromLocalFile(new Path("/home/hadoop/Desktop/Project3/Q3out.txt"),
-									new Path("/user/hadoop/Project3/kMeans_seed.txt"));
+									new Path("/home/hadoop/Desktop/Project3/outseed" + Integer.toString(iteration) + ".csv"));
+			hdfs.delete(new Path("/user/hadoop/Project3/seed.csv"),true);
+			hdfs.moveFromLocalFile(new Path("/home/hadoop/Desktop/Project3/outseed.csv"),
+									new Path("/user/hadoop/Project3/seed.csv"));
 			hdfs.delete(new Path(args[1]), true);
 			
-		        //Delete local file "~/Q3out/part-r-00000"
-			File index = new File("/home/hadoop/Desktop/Project3/Q3out.txt");
+		        
+			File index = new File("/home/hadoop/Desktop/Project3/outseed.csv");
 			index.delete();
 
 			iteration = iteration + 1;
-			System.out.println("Repeated:" + iteration);
+			
 			System.out.println(flag);
-		} while (iteration < 5 && flag == false ); // dist > Threshold
+		} while (iteration < 5 && flag == false ); 
 		
 		
 	}
